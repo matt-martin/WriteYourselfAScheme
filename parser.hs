@@ -39,12 +39,19 @@ parseString = do
                 char '"'
                 return $ String x
 
+parseStringChar :: Parser Char
 parseStringChar = (parseEscapedChar <|> noneOf "\"")
 
+parseEscapedChar :: Parser Char
 parseEscapedChar = do
-                      char '\\'
-                      oneOf "\""
-                      return '"' 
+                     char '\\'
+                     x <- char 'n' <|> char 't' <|> char '\\' <|> char '"'
+                     return $
+                       case x of
+                         'n' -> '\n'
+                         't' -> '\t'
+                         '\\' -> '\\'
+                         '"' -> '"'
 
 parseAtom :: Parser LispVal
 parseAtom = do 
