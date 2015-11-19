@@ -6,14 +6,23 @@ import Control.Monad
 import Numeric
 import Data.Char  (digitToInt)
 import Debug.Trace
+import Test.QuickCheck
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
-readExpr :: String -> String
-readExpr input = case parse spacesPlusString "lisp" input of
-    Left err -> "No match: " ++ show err
-    Right val -> "Found value " ++ show val
+readExpr :: String -> LispVal 
+readExpr input = case parse parseExpr "lisp" input of
+    Left err  -> String $  "No match: " ++ show err
+    Right val -> val
+
+eval :: LispVal -> LispVal
+eval val@(String _) = val
+eval val@(Number _) = val
+eval val@(Bool _) = val
+eval val@(Atom _) = val
+eval (List [Atom "quote", val]) = val
+eval (List (Atom func : args)) = apply func $ map eval args
 
 spacesPlusString :: Parser LispVal
 spacesPlusString = do
@@ -23,7 +32,9 @@ spacesPlusString = do
 main :: IO ()
 main = do 
          expr <- getLine
-         putStrLn (readExpr expr)
+         print  (eval  (readExpr expr))
+         main 
+
 
 spaces = skipMany1 space 
 
@@ -35,7 +46,45 @@ data LispVal = Atom String
              | String String
              | Bool Bool
              | Character Char 
-             deriving (Show)
+--             deriving (Show)
+
+instance Show LispVal where show = showVal
+
+apply :: String -> [LispVal] -> LispVal
+apply func args = maybe (Bool False) ($ args) $ lookup func primitives
+
+primitives :: [(String, [LispVal] -> LispVal)]
+primitives = [("+", numericBinop (+)),
+              ("-", numericBinop (-)),
+              ("*", numericBinop (*)),
+              ("/", numericBinop div),
+              ("mod", numericBinop mod),
+              ("quotient", numericBinop quot),
+              ("remainder", numericBinop rem),
+              ("symbol?", isSymbol),
+              ("bool?", isBool),
+              ("number?", isNumber)]
+
+isBool :: [LispVal] -> LispVal
+isBool (Bool _ : _) = Bool True
+isBool _            = Bool False
+
+isNumber :: [LispVal] -> LispVal
+isNumber (Number _ : _) = Bool True
+isNumber (Float _ : _ )= Bool True
+isNumber _ = Bool False
+
+isSymbol :: [LispVal] -> LispVal
+isSymbol (Atom _ : _)  = Bool True
+isSymbol _            = Bool False
+
+numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
+numericBinop op params = Number $ foldl1 op $ map unpackNum params
+
+unpackNum :: LispVal -> Integer
+unpackNum (Number n) = n
+unpackNum _ = 0
+
  
 parseString :: Parser LispVal
 parseString = do
@@ -47,10 +96,12 @@ parseString = do
 parseStringChar :: Parser Char
 parseStringChar = (parseEscapedChar <|> noneOf "\"")
 
+escapeCharacters = "nt\\\""
+
 parseEscapedChar :: Parser Char
 parseEscapedChar = do
                      char '\\'
-                     x <- oneOf "nt\\\"" -- one of the following characters: n, t, \, "
+                     x <- (oneOf escapeCharacters) <?> ("valid escape character in set " ++ escapeCharacters)-- one of the following characters: n, t, \, "
                      return $
                        case x of
                          'n' -> '\n'
@@ -58,7 +109,7 @@ parseEscapedChar = do
                          _ -> x -- it's either \ or " so we can return it "as is"
 
 parseChar :: Parser LispVal
-parseChar = parseLongChar <|> parseShortChar
+parseChar = try parseLongChar <|> parseShortChar
 
 parseShortChar :: Parser LispVal 
 parseShortChar = do 
@@ -144,6 +195,18 @@ parseQuoted = do
     x <- parseExpr
     return $ List [Atom "quote", x]
 
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
+
+unwordsList :: [LispVal] -> String
+unwordsList l = unwords $ map showVal l
+
 parseExpr :: Parser LispVal
 parseExpr = 
          (parseAtom <?> "atom")
@@ -156,3 +219,9 @@ parseExpr =
                 x <- try parseList <|> parseDottedList
                 char ')'
                 return x
+
+prop_parseString :: String -> Bool
+prop_parseString xs = let result = parse parseString "parseString quickcheck test" (show xs) in
+                        case result of
+                           Right(String val) -> val == xs
+                           _ -> error ("Unexpected result: " ++ (show result))
