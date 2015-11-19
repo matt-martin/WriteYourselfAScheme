@@ -76,15 +76,23 @@ parseNumber = do
 --parseNumber = many1 digit >>=
 --                return . Number . read
 
+arrayToString = \x -> concat(map(show)(x))
+
+binDigits = arrayToString [0, 1]
+octalDigits = arrayToString [0..7]
+decDigits = arrayToString [0..9]
+hexDigits = decDigits ++ ['a'..'f']
+
 parseNumPrefix :: Parser Integer
 parseNumPrefix = do 
         char '#'
         prefix <- oneOf "bodx"
-        case prefix of 
-          'o' -> liftM (fst . head . readOct) (many1 (oneOf (concat(map show [0..7]))))
-          'x' -> liftM (fst . head . readHex) (many1 (oneOf (concat(map show [0..9]) ++ ['a'..'f'])))
-          'd' -> parseNum
-          'b' -> liftM (fst . head . readInt 2 (`elem` "01") digitToInt) (many1 (oneOf (concat(map show [0, 1]))))
+        let validDigits = case prefix of 
+                            'b' -> binDigits
+                            'o' -> octalDigits
+                            'd' -> decDigits
+                            'x' -> hexDigits
+        liftM (fst . head . readInt (toInteger (length validDigits)) (`elem` validDigits) digitToInt) (many1 (oneOf validDigits))
 
 parseNum :: Parser Integer
 parseNum = liftM read (many1 digit)
