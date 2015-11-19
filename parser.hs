@@ -4,6 +4,7 @@ import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment
 import Control.Monad
 import Numeric
+import Data.Char  (digitToInt)
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -78,11 +79,12 @@ parseNumber = do
 parseNumPrefix :: Parser Integer
 parseNumPrefix = do 
         char '#'
-        prefix <- oneOf "odx"
+        prefix <- oneOf "bodx"
         case prefix of 
           'o' -> liftM (fst . head . readOct) (many1 (oneOf (concat(map show [0..7]))))
           'x' -> liftM (fst . head . readHex) (many1 (oneOf (concat(map show [0..9]) ++ ['a'..'f'])))
           'd' -> parseNum
+          'b' -> liftM (fst . head . readInt 2 (`elem` "01") digitToInt) (many1 (oneOf (concat(map show [0, 1]))))
 
 parseNum :: Parser Integer
 parseNum = liftM read (many1 digit)
