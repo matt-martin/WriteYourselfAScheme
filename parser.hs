@@ -30,8 +30,10 @@ data LispVal = Atom String
              | List [LispVal]
              | DottedList [LispVal] LispVal
              | Number Integer
+             | Float Float 
              | String String
              | Bool Bool
+             | Character Char 
              deriving (Show)
  
 parseString :: Parser LispVal
@@ -54,6 +56,25 @@ parseEscapedChar = do
                          't' -> '\t'
                          _ -> x -- it's either \ or " so we can return it "as is"
 
+parseChar :: Parser LispVal
+parseChar = parseLongChar <|> parseShortChar
+
+parseShortChar :: Parser LispVal 
+parseShortChar = do 
+                 string "#\\"
+                 x <- anyChar 
+                 return $ Character x
+
+-- consider rewriting with out case match
+parseLongChar :: Parser LispVal
+parseLongChar = do 
+                  string "#\\"
+                  x <- (string "space" <|> string "newline")
+                  case x of 
+                   "space" -> return $ Character ' '
+                   "newline" -> return $ Character '\n'
+
+
 parseAtom :: Parser LispVal
 parseAtom = do 
               first <- letter <|> symbol
@@ -74,6 +95,13 @@ parseNumber = do
 -- using bind
 --   parseNumber = many1 digit >>=
 --                   return . Number . read
+
+parseFloat :: Parser LispVal
+parseFloat = do 
+        wholePart <- many (digit) 
+        char '.' 
+        decimalPart <- many (digit) 
+        return $ Float (fst $ head $ readFloat (wholePart ++ "." ++ decimalPart)) 
 
 arrayToString = \x -> concat(map(show)(x))
 
@@ -102,3 +130,4 @@ parseExpr :: Parser LispVal
 parseExpr = parseNumber
          <|> parseString
          <|> parseAtom
+         <|> parseChar
