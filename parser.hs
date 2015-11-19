@@ -3,6 +3,7 @@ import System.Environment
 import Text.ParserCombinators.Parsec hiding (spaces)
 import System.Environment
 import Control.Monad
+import Numeric
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -67,14 +68,27 @@ parseNumber :: Parser LispVal
 -- using liftM:
 --   parseNumber = liftM (Number . read) $ many1 digit
 -- using do notation:
---   parseNumber = do 
---                 x <- many1 digit 
---                 return  (Number  (read x))
+parseNumber = do 
+         x <- parseNumPrefix <|> parseNum
+	 return  (Number  x)
 -- using bind
-parseNumber = many1 digit >>=
-                return . Number . read
+--parseNumber = many1 digit >>=
+--                return . Number . read
+
+parseNumPrefix :: Parser Integer
+parseNumPrefix = do 
+        char '#'
+        prefix <- oneOf "odx"
+        case prefix of 
+          'o' -> liftM (fst . head . readOct) (many1 (oneOf (concat(map show [0..7]))))
+          'x' -> liftM (fst . head . readHex) (many1 (oneOf (concat(map show [0..9]) ++ ['a'..'f'])))
+          'd' -> parseNum
+
+parseNum :: Parser Integer
+parseNum = liftM read (many1 digit)
+          
 
 parseExpr :: Parser LispVal
-parseExpr = parseAtom
+parseExpr = parseNumber
          <|> parseString
-         <|> parseNumber
+         <|> parseAtom
