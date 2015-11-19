@@ -17,7 +17,7 @@ readExpr input = case parse spacesPlusString "lisp" input of
 spacesPlusString :: Parser LispVal
 spacesPlusString = do
                      spaces
-		     parseExpr
+                     parseExpr
 
 main :: IO ()
 main = do 
@@ -32,7 +32,7 @@ data LispVal = Atom String
              | Number Integer
              | String String
              | Bool Bool
-	     deriving (Show)
+             deriving (Show)
  
 parseString :: Parser LispVal
 parseString = do
@@ -70,7 +70,7 @@ parseNumber :: Parser LispVal
 -- using do notation:
 parseNumber = do 
          x <- parseNumPrefix <|> parseNum
-	 return  (Number  x)
+         return  (Number  x)
 -- using bind
 --   parseNumber = many1 digit >>=
 --                   return . Number . read
@@ -91,6 +91,7 @@ parseNumPrefix = do
                             'o' -> octalDigits
                             'd' -> decDigits
                             'x' -> hexDigits
+        -- based off of https://stackoverflow.com/a/5922212/4966331
         liftM (fst . head . readInt (toInteger (length validDigits)) (`elem` validDigits) digitToInt) (many1 (oneOf validDigits))
 
 parseNum :: Parser Integer
