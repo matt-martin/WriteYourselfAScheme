@@ -63,7 +63,17 @@ primitives = [("+", numericBinop (+)),
               ("remainder", numericBinop rem),
               ("symbol?", isSymbol),
               ("bool?", isBool),
-              ("number?", isNumber)]
+              ("number?", isNumber),
+              ("string->symbol", stringToSymbol),
+              ("symbol->string", symbolToString)]
+
+symbolToString :: [LispVal] -> LispVal
+symbolToString (Atom x : _) = String x
+symbolToString _ = Bool False 
+
+stringToSymbol :: [LispVal] -> LispVal
+stringToSymbol (String x : _) = Atom x
+stringToSymbol _ = Bool False
 
 isBool :: [LispVal] -> LispVal
 isBool (Bool _ : _) = Bool True
@@ -74,6 +84,9 @@ isNumber (Number _ : _) = Bool True
 isNumber (Float _ : _ )= Bool True
 isNumber _ = Bool False
 
+-- According to http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3.3,
+--   (symbol? (car '(a b)))          ===>  #t
+-- However, we return false... maybe because we don't properly reduce the (car ...) expression?
 isSymbol :: [LispVal] -> LispVal
 isSymbol (Atom _ : _)  = Bool True
 isSymbol _            = Bool False
