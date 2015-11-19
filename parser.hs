@@ -151,3 +151,8 @@ parseExpr =
          <|> (parseString <?> "string")
          <|> (parseNumber <?> "number")
          <|> (parseChar <?> "char")
+         <|> (parseQuoted<?> "quoted")
+         <|> do char '('
+                x <- try parseList <|> parseDottedList
+                char ')'
+                return x
