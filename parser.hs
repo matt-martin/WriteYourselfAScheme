@@ -5,6 +5,7 @@ import System.Environment
 import Control.Monad
 import Numeric
 import Data.Char  (digitToInt)
+import Debug.Trace
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -98,9 +99,9 @@ parseNumber = do
 
 parseFloat :: Parser LispVal
 parseFloat = do 
-        wholePart <- many (digit) 
+        wholePart <- many1 (digit) 
         char '.' 
-        decimalPart <- many (digit) 
+        decimalPart <- many1 (digit) 
         return $ Float (fst $ head $ readFloat (wholePart ++ "." ++ decimalPart)) 
 
 arrayToString = \x -> concat(map(show)(x))
@@ -124,10 +125,29 @@ parseNumPrefix = do
 
 parseNum :: Parser Integer
 parseNum = liftM read (many1 digit)
+
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces
           
+parseDottedList :: Parser LispVal
+parseDottedList = do
+    head <- (endBy parseExpr (spaces <?> "spaces in head of dotted list")) <?> "head"
+    char '.' <?> "dot in dotted list"
+    spaces <?> "spaces after dot in dotted list"
+    tail <- parseExpr <?> "last elem in dotted list"
+--    tail <- (char '.' >> spaces >> parseExpr) <?> "tail"
+    return $ DottedList head tail
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+    char '\''
+    x <- parseExpr
+    return $ List [Atom "quote", x]
 
 parseExpr :: Parser LispVal
-parseExpr = parseNumber
-         <|> parseString
-         <|> parseAtom
-         <|> parseChar
+parseExpr = 
+         (parseAtom <?> "atom")
+         <|> ((try (parseFloat)) <?> "float")
+         <|> (parseString <?> "string")
+         <|> (parseNumber <?> "number")
+         <|> (parseChar <?> "char")
