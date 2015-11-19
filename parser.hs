@@ -47,13 +47,12 @@ parseStringChar = (parseEscapedChar <|> noneOf "\"")
 parseEscapedChar :: Parser Char
 parseEscapedChar = do
                      char '\\'
-                     x <- char 'n' <|> char 't' <|> char '\\' <|> char '"'
+                     x <- oneOf "nt\\\"" -- one of the following characters: n, t, \, "
                      return $
                        case x of
                          'n' -> '\n'
                          't' -> '\t'
-                         '\\' -> '\\'
-                         '"' -> '"'
+                         _ -> x -- it's either \ or " so we can return it "as is"
 
 parseAtom :: Parser LispVal
 parseAtom = do 
@@ -73,8 +72,8 @@ parseNumber = do
          x <- parseNumPrefix <|> parseNum
 	 return  (Number  x)
 -- using bind
---parseNumber = many1 digit >>=
---                return . Number . read
+--   parseNumber = many1 digit >>=
+--                   return . Number . read
 
 arrayToString = \x -> concat(map(show)(x))
 
