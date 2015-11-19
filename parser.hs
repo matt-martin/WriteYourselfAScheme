@@ -64,10 +64,13 @@ parseAtom = do
                          _    -> Atom atom
 
 parseNumber :: Parser LispVal
---parseNumber = liftM (Number . read) $ many1 digit
---parseNumber = do 
---              x <- many1 digit 
---              return  (Number  (read x))
+-- using liftM:
+--   parseNumber = liftM (Number . read) $ many1 digit
+-- using do notation:
+--   parseNumber = do 
+--                 x <- many1 digit 
+--                 return  (Number  (read x))
+-- using bind
 parseNumber = many1 digit >>=
                 return . Number . read
 
